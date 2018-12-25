@@ -28,7 +28,6 @@ public class MainActivity extends AppCompatActivity {
             mediaPlayer.setOnPreparedListener(myOnPreparedListener);
             mediaPlayer.prepareAsync();
 
-
         } catch (IOException e) {
             e.printStackTrace();
         }
