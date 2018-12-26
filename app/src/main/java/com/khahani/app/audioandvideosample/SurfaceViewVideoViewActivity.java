@@ -1,92 +1,65 @@
 package com.khahani.app.audioandvideosample;
 
-import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
-import android.view.View;
-import android.widget.Button;
+
+import com.google.android.exoplayer2.ExoPlayerFactory;
+import com.google.android.exoplayer2.SimpleExoPlayer;
+import com.google.android.exoplayer2.extractor.ExtractorsFactory;
+import com.google.android.exoplayer2.source.ExtractorMediaSource;
+import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
+import com.google.android.exoplayer2.ui.PlayerView;
+import com.google.android.exoplayer2.upstream.DataSource;
+import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
+import com.google.android.exoplayer2.util.Util;
+
 import java.io.File;
-import java.io.IOException;
-import android.view.View.OnClickListener;
 
-public class SurfaceViewVideoViewActivity extends AppCompatActivity
-        implements SurfaceHolder.Callback {
-
-    static final String TAG = "VideoViewActivity";
-
-    private MediaPlayer mediaPlayer;
-
-    @Override
-    public void surfaceCreated(SurfaceHolder surfaceHolder) {
-        try {
-
-            mediaPlayer.setDisplay(surfaceHolder);
-            File file = new File(Environment.getExternalStorageDirectory(),
-                    "dont travel to iran.mp4");
-            mediaPlayer.setDataSource(file.getPath());
-            mediaPlayer.prepare();
-
-        } catch (IllegalArgumentException e) {
-            Log.e(TAG, "Illegal Argument Exception", e);
-        } catch (IllegalStateException e) {
-            Log.e(TAG, "Illegal State Exception", e);
-        } catch (SecurityException e) {
-            Log.e(TAG, "Security Exception", e);
-        } catch (IOException e) {
-            Log.e(TAG, "IO Exception", e);
-        }
-    }
-
-
-    @Override
-    public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
-        mediaPlayer.release();
-    }
-
-    @Override
-    public void surfaceChanged(SurfaceHolder surfaceHolder,
-                               int format, int width, int height) {
-    }
+public class SurfaceViewVideoViewActivity extends AppCompatActivity {
+    private PlayerView playerView;
+    private SimpleExoPlayer player;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_surface_view_video_view);
 
-        mediaPlayer = new MediaPlayer();
+        playerView = findViewById(R.id.player_view);
+    }
 
-        final SurfaceView surfaceView =
-                findViewById(R.id.surfaceView);
-        // Configure the Surface View.
-        surfaceView.setKeepScreenOn(true);
-        // Configure the Surface Holder and register the callback.
-        SurfaceHolder holder = surfaceView.getHolder();
-        holder.addCallback(this);
-        holder.setFixedSize(400, 300);
+    @Override
+    protected void onStart() {
+        super.onStart();
+        player = ExoPlayerFactory.newSimpleInstance(this,
+                new DefaultTrackSelector());
 
-        Button playButton = findViewById(R.id.buttonPlay);
-        playButton.setOnClickListener(new OnClickListener() {
-            public void onClick(View v) {
-                mediaPlayer.start();
-            }
-        });
+        playerView.setPlayer(player);
 
-        Button pauseButton = findViewById(R.id.buttonPause);
-        pauseButton.setOnClickListener(new OnClickListener() {
-            public void onClick(View v) {
-                mediaPlayer.pause();
-            }
-        });
+        // Build a datasource factory capable of
+        // loading http and local content
+        DataSource.Factory datasourceFactory = new DefaultDataSourceFactory(
+                this,
+                Util.getUserAgent(this, getString(R.string.app_name)));
 
-        Button skipButton = findViewById(R.id.buttonSkip);
-        skipButton.setOnClickListener(new OnClickListener() {
-            public void onClick(View v) {
-                mediaPlayer.seekTo(mediaPlayer.getDuration()/2);
-            }
-        });
+        File file = new File(Environment.getExternalStorageDirectory(),
+                "dont travel to iran.mp4");
+
+        ExtractorMediaSource mediaSource =
+                new ExtractorMediaSource.Factory(datasourceFactory)
+                        .createMediaSource(Uri.fromFile(file));
+
+        player.prepare(mediaSource);
+
+        player.setPlayWhenReady(true);
+    }
+
+    @Override
+    protected void onStop() {
+        playerView.setPlayer(null);
+        player.release();
+        player = null;
+        super.onStop();
     }
 }
