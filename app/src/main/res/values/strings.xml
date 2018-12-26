@@ -3,4 +3,8 @@
     <string name="play">Play</string>
     <string name="pause">pause</string>
     <string name="skip">Skip</string>
+    <string name="request_permission_title">درخواست دسترسی</string>
+    <string name="request_permision_read_external_storage_message">برای نمایش ویدئو نیاز به دسترسی خواندن فایل های می باشد. آیا این اجازه را می دهید؟</string>
+    <string name="no">خیر</string>
+    <string name="yes">بله</string>
 </resources>
