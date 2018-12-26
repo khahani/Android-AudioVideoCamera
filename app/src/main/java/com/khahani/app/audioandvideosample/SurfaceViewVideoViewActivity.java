@@ -13,80 +13,66 @@ import java.io.File;
 import java.io.IOException;
 import android.view.View.OnClickListener;
 
+//todo: 8. implement SurfaceHolder.Callback for your Activity and implement it's methods
 public class SurfaceViewVideoViewActivity extends AppCompatActivity
-        implements SurfaceHolder.Callback {
+        {
 
-    static final String TAG = "VideoViewActivity";
+            //todo: 1. define String field and call it TAG and set its value to "VideoViewActivity"
 
-    private MediaPlayer mediaPlayer;
+            //todo: 2. define field MediaPlayer call it mediaPlayer
 
-    @Override
-    public void surfaceCreated(SurfaceHolder surfaceHolder) {
-        try {
-
-            mediaPlayer.setDisplay(surfaceHolder);
-            File file = new File(Environment.getExternalStorageDirectory(),
-                    "dont travel to iran.mp4");
-            mediaPlayer.setDataSource(file.getPath());
-            mediaPlayer.prepare();
-
-        } catch (IllegalArgumentException e) {
-            Log.e(TAG, "Illegal Argument Exception", e);
-        } catch (IllegalStateException e) {
-            Log.e(TAG, "Illegal State Exception", e);
-        } catch (SecurityException e) {
-            Log.e(TAG, "Security Exception", e);
-        } catch (IOException e) {
-            Log.e(TAG, "IO Exception", e);
-        }
-    }
+            //todo: 9. cut todos number 10 to 15 into the surfaceCreated method and continue
+            //todo: 10. call mediaPlayer.setDisplay method and pass the surfaceHolder parameter to it
+            //todo: 11. Read a file from external storage and save it to a File object and call it file
+            //todo: 12. call mediaPlayer.setDataSource and pass it file.getPath method
+            //todo: 13. call mediaPlayer.prepare method
+            //todo: 14. suround all code from todo 10 to 13  into a try-catch block
+            //todo: 15. add IOException for catch block
 
 
-    @Override
-    public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
-        mediaPlayer.release();
-    }
-
-    @Override
-    public void surfaceChanged(SurfaceHolder surfaceHolder,
-                               int format, int width, int height) {
-    }
+            //todo: 16. call mediaPlayer.release on surfaceDestroyed method
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_surface_view_video_view);
 
-        mediaPlayer = new MediaPlayer();
 
-        final SurfaceView surfaceView =
-                findViewById(R.id.surfaceView);
-        // Configure the Surface View.
-        surfaceView.setKeepScreenOn(true);
-        // Configure the Surface Holder and register the callback.
-        SurfaceHolder holder = surfaceView.getHolder();
-        holder.addCallback(this);
-        holder.setFixedSize(400, 300);
+        //todo: 3. initialize mediaPlayer by calling its default constructor
 
-        Button playButton = findViewById(R.id.buttonPlay);
-        playButton.setOnClickListener(new OnClickListener() {
-            public void onClick(View v) {
-                mediaPlayer.start();
-            }
-        });
+        //todo: 5. create a final SurfaceView object and call it surfaceView and connect it
+        // to surfaceView in your layout
 
-        Button pauseButton = findViewById(R.id.buttonPause);
-        pauseButton.setOnClickListener(new OnClickListener() {
-            public void onClick(View v) {
-                mediaPlayer.pause();
-            }
-        });
+        //todo: 6. Configure the Surface View by calling setKeepScreenOn method with true value.
 
-        Button skipButton = findViewById(R.id.buttonSkip);
-        skipButton.setOnClickListener(new OnClickListener() {
-            public void onClick(View v) {
-                mediaPlayer.seekTo(mediaPlayer.getDuration()/2);
-            }
-        });
+        //todo: 7. Create an object of SurfaceHolder class and name it holder, initial it by
+        // calling getHolder method from surfaceView object.
+
+        //todo: 17. call holder.addCallback and pass it this as parameter
+
+        //todo: 18. call holder.setFixedSize and set width = 400 and height = 300
+
+        //todo: 19. create an object on Button class and call it playButton and connect to buttonPlay
+        // in your layout by calling findViewById
+
+        //todo: 20. set an OnClickListener to the button by calling setOnClickListener
+
+        //todo: 21. call mediaPlayer.start method to playing the media.
+
+        //todo: 22. create an object on Button class and call it pauseButton and connect to buttonPause
+        // in your layout by calling findViewById
+
+        //todo: 23. set an OnClickListener to the button by calling setOnClickListener
+
+        //todo: 24. call mediaPlayer.pause method to pausing the playing media.
+
+        //todo: 22. create an object on Button class and call it skipButton and connect to buttonSkip
+        // in your layout by calling findViewById
+
+        //todo: 23. set an OnClickListener to the button by calling setOnClickListener
+
+        //todo: 24. call mediaPlayer.seekTo method to jump to center of media and for that
+        // pass mediaPlayer.getDuration() / 2 as parameter to it.
+
     }
 }
