@@ -1,6 +1,9 @@
 package com.khahani.app.audioandvideosample;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
@@ -25,7 +28,10 @@ public class MainActivity extends AppCompatActivity {
                             AudioManager.AUDIOFOCUS_GAIN);
 
                     if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED){
+
+                        registerNoisyReceiver();
                         mediaPlayer.start();
+
                     }
 
                 }
@@ -53,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
                             mediaPlayer.setVolume(0.2f, 0.2f);
                             break;
                         case (AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) :
-                            mediaPlayer.pause();
+                            pauseAudioPlayback();
                             break;
                         case (AudioManager.AUDIOFOCUS_LOSS) :
                             mediaPlayer.stop();
@@ -68,10 +74,39 @@ public class MainActivity extends AppCompatActivity {
                 }
             };
 
+    private class NoisyAudioStreamReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals
+                    (intent.getAction())) {
+                pauseAudioPlayback();
+            }
+        }
+    }
+
+    private void pauseAudioPlayback() {
+        mediaPlayer.pause();
+    }
+
+    NoisyAudioStreamReceiver mNoisyAudioStreamReceiver
+            = new NoisyAudioStreamReceiver();
+
+    private void registerNoisyReceiver() {
+        IntentFilter filter =
+                new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+        registerReceiver(mNoisyAudioStreamReceiver, filter);
+    }
+
+    public void unregisterNoisyReceiver() {
+        unregisterReceiver(mNoisyAudioStreamReceiver);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
         try {
 
@@ -83,6 +118,11 @@ public class MainActivity extends AppCompatActivity {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterNoisyReceiver();
     }
 }
