@@ -1,0 +1,58 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:autoMirrored="true"
+    android:viewportWidth="13"
+    android:viewportHeight="13">
+
+    <!--outer circle-->
+
+    <group>
+        <clip-path android:pathData="M-315,-49h480v64h-480z M 0,0" />
+        <path
+            android:fillAlpha="0.13"
+            android:fillColor="#349CDF"
+            android:pathData="M6.5 13C10.0899 13 13 10.0899 13 6.5C13 2.91015 10.0899 0 6.5 0C2.91015 0 0 2.91015 0 6.5C0 10.0899 2.91015 13 6.5 13Z"
+            android:strokeColor="#00000000" />
+    </group>
+
+    <!--inner circle-->
+
+    <group
+        android:translateX="3"
+        android:translateY="3">
+
+        <clip-path android:pathData="M-315,-49h480v64h-480z M 0,0" />
+        <path
+            android:fillColor="#198FDB"
+            android:pathData="M3.5 7C5.433 7 7 5.433 7 3.5C7 1.567 5.433 0 3.5 0C1.567 0 0 1.567 0 3.5C0 5.433 1.567 7 3.5 7Z"
+            android:strokeColor="#00000000" />
+    </group>
+
+    <!--left progress-->
+    <group
+        android:rotation="180"
+        android:translateY="6.8"
+        android:translateX="6">
+        <clip-path android:pathData="M0,-55h480v64h-480z M 0,0" />
+        <path
+            android:fillAlpha="0.7"
+            android:fillColor="#198FDB"
+            android:pathData="M0 0L480 0L480 1L0 1L0 0Z"
+            android:strokeColor="#00000000" />
+    </group>
+
+    <!--right progress-->
+
+    <group
+        android:translateY="6"
+        android:translateX="10">
+        <clip-path android:pathData="M0,-55h480v64h-480z M 0,0" />
+        <path
+            android:fillAlpha="0.05882353"
+            android:fillColor="#FFFFFF"
+            android:pathData="M0 0L480 0L480 1L0 1L0 0Z"
+            android:strokeColor="#00000000" />
+    </group>
+
+</vector>

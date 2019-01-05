@@ -4,4 +4,5 @@
     <color name="colorPrimaryDark">#202025</color>
     <color name="colorAccent">#D81B60</color>
     <color name="background">#2F2F38</color>
+    <color name="listview_background">#23232C</color>
 </resources>
