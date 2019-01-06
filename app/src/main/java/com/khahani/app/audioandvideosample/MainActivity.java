@@ -5,12 +5,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Bitmap;
-import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
-import android.media.session.MediaSession;
 import android.net.Uri;
-import android.os.Environment;
+import android.os.Handler;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
@@ -18,12 +16,10 @@ import android.support.v4.media.session.PlaybackStateCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.SeekBar;
 
-import java.io.File;
 import java.io.IOException;
-import java.net.URI;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -34,11 +30,14 @@ public class MainActivity extends AppCompatActivity {
     MediaControllerCompat mediaController;
 
     ImageView playButton, pauseButton;
+    SeekBar seekBar;
 
     private MediaPlayer.OnPreparedListener myOnPreparedListener =
             new MediaPlayer.OnPreparedListener() {
                 @Override
                 public void onPrepared(MediaPlayer mediaPlayer) {
+
+                    seekBar.setMax(mediaPlayer.getDuration() / 1000);
 
                     AudioManager audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
 
@@ -65,6 +64,9 @@ public class MainActivity extends AppCompatActivity {
                 public void onCompletion(MediaPlayer mediaPlayer) {
                     AudioManager audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
                     audioManager.abandonAudioFocus(focusChangeListener);
+
+                    mediaController.getTransportControls().stop();
+
                 }
             };
 
@@ -98,7 +100,6 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
             };
-
 
     private class NoisyAudioStreamReceiver extends BroadcastReceiver {
         @Override
@@ -148,9 +149,17 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPlay() {
                 super.onPlay();
-                mediaPlayer.start();
-                playButton.setVisibility(View.INVISIBLE);
-                pauseButton.setVisibility(View.VISIBLE);
+
+                if (mediaPlayer == null){
+                    initialMediaPlayer();
+                }else {
+
+                    mediaPlayer.start();
+                    playButton.setVisibility(View.INVISIBLE);
+                    pauseButton.setVisibility(View.VISIBLE);
+
+                    runSeekbar();
+                }
             }
 
             @Override
@@ -159,25 +168,31 @@ public class MainActivity extends AppCompatActivity {
                 mediaPlayer.pause();
                 playButton.setVisibility(View.VISIBLE);
                 pauseButton.setVisibility(View.INVISIBLE);
+
+                stopSeekbar();
             }
 
             @Override
             public void onSeekTo(long position) {
                 super.onSeekTo(position);
-                mediaPlayer.seekTo((int)position);
+                mediaPlayer.seekTo((int) position);
             }
+
+            @Override
+            public void onStop() {
+                super.onStop();
+                mediaPlayer.stop();
+                mediaPlayer.release();
+                mediaPlayer = null;
+                stopSeekbar();
+                playButton.setVisibility(View.VISIBLE);
+                pauseButton.setVisibility(View.INVISIBLE);
+                seekBar.setProgress(0);
+            }
+
         });
 
-        try {
-
-            mediaPlayer = new MediaPlayer();
-            mediaPlayer.setDataSource("http://sv.blogmusic.ir/myahang/Classic-music-1.mp3");
-            mediaPlayer.setOnPreparedListener(myOnPreparedListener);
-            mediaPlayer.prepareAsync();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        initialMediaPlayer();
 
         playButton = findViewById(R.id.imageViewPlay);
         pauseButton = findViewById(R.id.imageViewPause);
@@ -196,8 +211,44 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        seekBar = findViewById(R.id.seekbar);
+        seekBar.setOnSeekBarChangeListener(seekBarChangeListener);
 
     }
+
+    private void initialMediaPlayer() {
+        try {
+
+            mediaPlayer = new MediaPlayer();
+            mediaPlayer.setDataSource("http://sv.blogmusic.ir/myahang/Classic-music-1.mp3");
+            mediaPlayer.setOnPreparedListener(myOnPreparedListener);
+            mediaPlayer.setOnCompletionListener(completionListener);
+            mediaPlayer.prepareAsync();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private SeekBar.OnSeekBarChangeListener seekBarChangeListener =
+            new SeekBar.OnSeekBarChangeListener() {
+                @Override
+                public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                    if(mediaPlayer != null && fromUser){
+                        mediaPlayer.seekTo(progress * 1000);
+                    }
+                }
+
+                @Override
+                public void onStartTrackingTouch(SeekBar seekBar) {
+
+                }
+
+                @Override
+                public void onStopTrackingTouch(SeekBar seekBar) {
+
+                }
+            };
 
     PlaybackStateCompat.Builder playbackStateBuilder =
             new PlaybackStateCompat.Builder();
@@ -255,5 +306,29 @@ public class MainActivity extends AppCompatActivity {
 
 
         mMediaSession.setMetadata(builder.build());
+    }
+
+    private Handler seekbarHandler;
+    private Runnable seekbarRunnable;
+
+    private void runSeekbar() {
+        seekBar.setEnabled(true);
+        seekbarHandler = new Handler();
+        seekbarRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (mediaPlayer != null) {
+                    int mCurrentPosition = mediaPlayer.getCurrentPosition() / 1000;
+                    seekBar.setProgress(mCurrentPosition);
+                }
+                seekbarHandler.postDelayed(this, 1000);
+            }
+        };
+        runOnUiThread(seekbarRunnable);
+    }
+
+    private void stopSeekbar() {
+        seekBar.setEnabled(false);
+        seekbarHandler.removeCallbacks(seekbarRunnable);
     }
 }

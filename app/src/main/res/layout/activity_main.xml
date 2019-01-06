@@ -104,9 +104,9 @@
     </android.support.constraint.ConstraintLayout>
 
     <View
-        android:background="@color/listview_background"
         android:layout_width="0dp"
         android:layout_height="0dp"
+        android:background="@color/listview_background"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -120,6 +120,7 @@
         android:paddingStart="0dp"
         android:paddingEnd="0dp"
         android:progressDrawable="@drawable/seekbar_progress"
+        android:splitTrack="false"
         android:thumb="@drawable/seekbar_control"
         app:layout_constraintBottom_toBottomOf="@id/player"
         app:layout_constraintEnd_toEndOf="parent"
