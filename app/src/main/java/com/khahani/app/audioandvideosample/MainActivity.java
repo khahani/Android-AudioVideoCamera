@@ -5,10 +5,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Bitmap;
+import android.graphics.drawable.Animatable;
+import android.graphics.drawable.AnimatedVectorDrawable;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Handler;
+import android.support.graphics.drawable.AnimatedVectorDrawableCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
@@ -155,6 +158,15 @@ public class MainActivity extends AppCompatActivity {
                 }else {
 
                     mediaPlayer.start();
+
+                    AnimatedVectorDrawableCompat anim =
+                            AnimatedVectorDrawableCompat.create(
+                                    MainActivity.this,
+                                    R.drawable.anim_vector_drawable);
+                    playButton.setImageDrawable(anim);
+                    Animatable animatable = (Animatable) playButton.getDrawable();
+                    animatable.start();
+
                     playButton.setVisibility(View.INVISIBLE);
                     pauseButton.setVisibility(View.VISIBLE);
 
