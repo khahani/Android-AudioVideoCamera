@@ -46,7 +46,7 @@
             android:layout_marginStart="24dp"
             android:padding="4dp"
             android:src="@drawable/ic_shape_pause"
-            android:visibility="visible"
+            android:visibility="invisible"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toEndOf="@id/imageViewPreview"
             app:layout_constraintTop_toTopOf="parent" />
@@ -57,7 +57,7 @@
             android:layout_height="24dp"
             android:layout_marginStart="24dp"
             android:src="@drawable/ic_shape_play"
-            android:visibility="invisible"
+            android:visibility="visible"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toEndOf="@id/imageViewPreview"
             app:layout_constraintTop_toTopOf="parent" />

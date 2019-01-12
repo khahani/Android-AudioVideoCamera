@@ -1,133 +1,106 @@
 package com.khahani.app.audioandvideosample;
 
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.graphics.Bitmap;
+import android.content.ComponentName;
 import android.media.AudioManager;
-import android.media.MediaPlayer;
-import android.net.Uri;
 import android.os.Handler;
+import android.os.RemoteException;
+import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.SeekBar;
-
-import java.io.IOException;
+import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String LOG_TAG = MainActivity.class.getSimpleName();
-    private MediaPlayer mediaPlayer;
-    private MediaSessionCompat mMediaSession;
+    private static final String TAG = MainActivity.class.getSimpleName();
 
-    MediaControllerCompat mediaController;
+    private MediaBrowserCompat mMediaBrowser;
+    private MediaControllerCompat mMediaController;
 
     ImageView playButton, pauseButton;
     SeekBar seekBar;
 
-    private MediaPlayer.OnPreparedListener myOnPreparedListener =
-            new MediaPlayer.OnPreparedListener() {
+    PlaybackStateCompat playbackStateCompat;
+
+    private MediaBrowserCompat.ConnectionCallback mMediaBrowserCallback =
+            new MediaBrowserCompat.ConnectionCallback() {
                 @Override
-                public void onPrepared(MediaPlayer mediaPlayer) {
+                public void onConnected() {
+                    super.onConnected();
+                    try {
+                        MediaSessionCompat.Token token = mMediaBrowser.getSessionToken();
+                        mMediaController =
+                                new MediaControllerCompat(MainActivity.this, token);
 
-                    seekBar.setMax(mediaPlayer.getDuration() / 1000);
+                        MediaControllerCompat.setMediaController(MainActivity.this, mMediaController);
 
-                    AudioManager audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+                        mMediaController.registerCallback(
+                                new MediaControllerCompat.Callback() {
+                                    @Override
+                                    public void onPlaybackStateChanged(PlaybackStateCompat state) {
 
-                    int result = audioManager.requestAudioFocus(focusChangeListener,
-                            AudioManager.STREAM_MUSIC,
-                            AudioManager.AUDIOFOCUS_GAIN);
+                                        playbackStateCompat = state;
 
-                    if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                                        switch (state.getState()) {
+                                            case PlaybackStateCompat.STATE_ERROR:
+                                                Toast.makeText(MainActivity.this, "Something wrong happen", Toast.LENGTH_SHORT).show();
+                                                break;
+                                            case PlaybackStateCompat.STATE_PLAYING:
+                                                runSeekbar();
+                                                playButton.setVisibility(View.INVISIBLE);
+                                                pauseButton.setVisibility(View.VISIBLE);
+                                                break;
+                                            case PlaybackStateCompat.STATE_PAUSED:
+                                                playButton.setVisibility(View.VISIBLE);
+                                                pauseButton.setVisibility(View.INVISIBLE);
+                                                break;
+                                            case PlaybackStateCompat.STATE_STOPPED:
+                                                stopSeekbar();
+                                                seekBar.setProgress(0);
+                                                playButton.setVisibility(View.VISIBLE);
+                                                pauseButton.setVisibility(View.INVISIBLE);
+                                                break;
+                                        }
+                                    }
 
-                        registerNoisyReceiver();
-                        mMediaSession.setActive(true);
-                        updatePlaybackState();
-                        //mediaPlayer.start();
-                        mediaController.getTransportControls().play();
+                                    @Override
+                                    public void onMetadataChanged(MediaMetadataCompat metadata) {
+                                        if (metadata.containsKey(MediaMetadataCompat.METADATA_KEY_DURATION)) {
+                                            int duration = (int) metadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION);
+                                            try {
+                                                seekBar.setMax(duration);
+                                            } catch (Exception e) {
+                                                Log.e(TAG, "onMetadataChanged: " + e.getMessage());
+                                            }
+                                        }
+                                    }
+                                });
 
-                    }
+                        mMediaController.getTransportControls()
+                                .sendCustomAction(MediaPlaybackService.ACTION_UPDATE_META_DATA, null);
 
-                }
-            };
-
-    private MediaPlayer.OnCompletionListener completionListener =
-            new MediaPlayer.OnCompletionListener() {
-                @Override
-                public void onCompletion(MediaPlayer mediaPlayer) {
-                    AudioManager audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
-                    audioManager.abandonAudioFocus(focusChangeListener);
-
-                    mediaController.getTransportControls().stop();
-
-                }
-            };
-
-    private AudioManager.OnAudioFocusChangeListener focusChangeListener =
-            new AudioManager.OnAudioFocusChangeListener() {
-                @Override
-                public void onAudioFocusChange(int focusChange) {
-
-                    AudioManager am =
-                            (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-
-                    switch (focusChange) {
-                        case (AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK):
-                            mediaPlayer.setVolume(0.2f, 0.2f);
-                            break;
-                        case (AudioManager.AUDIOFOCUS_LOSS_TRANSIENT):
-                            pauseAudioPlayback();
-                            break;
-                        case (AudioManager.AUDIOFOCUS_LOSS):
-                            //mediaPlayer.stop();
-                            mediaController.getTransportControls().stop();
-                            am.abandonAudioFocus(this);
-                            break;
-                        case (AudioManager.AUDIOFOCUS_GAIN):
-                            mediaPlayer.setVolume(1f, 1f);
-                            //mediaPlayer.start();
-                            mediaController.getTransportControls().play();
-                            break;
-                        default:
-                            break;
+                    } catch (RemoteException e) {
+                        Log.e(TAG, "onConnected: " + e.getMessage());
                     }
                 }
+
+                @Override
+                public void onConnectionSuspended() {
+                    super.onConnectionSuspended();
+                }
+
+                @Override
+                public void onConnectionFailed() {
+                    super.onConnectionFailed();
+                }
             };
-
-    private class NoisyAudioStreamReceiver extends BroadcastReceiver {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals
-                    (intent.getAction())) {
-                pauseAudioPlayback();
-            }
-        }
-    }
-
-    private void pauseAudioPlayback() {
-        //mediaPlayer.pause();
-        mediaController.getTransportControls().pause();
-    }
-
-    NoisyAudioStreamReceiver mNoisyAudioStreamReceiver
-            = new NoisyAudioStreamReceiver();
-
-    private void registerNoisyReceiver() {
-        IntentFilter filter =
-                new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
-        registerReceiver(mNoisyAudioStreamReceiver, filter);
-    }
-
-    public void unregisterNoisyReceiver() {
-        unregisterReceiver(mNoisyAudioStreamReceiver);
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -136,63 +109,12 @@ public class MainActivity extends AppCompatActivity {
 
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
-        mMediaSession = new MediaSessionCompat(this, LOG_TAG);
-        mediaController =
-                new MediaControllerCompat(this, mMediaSession);
+        mMediaBrowser = new MediaBrowserCompat(this,
+                new ComponentName(this, MediaPlaybackService.class),
+                mMediaBrowserCallback,
+                null);
 
-        mMediaSession.setFlags(
-                MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS |
-                        MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
-        );
-
-        mMediaSession.setCallback(new MediaSessionCompat.Callback() {
-            @Override
-            public void onPlay() {
-                super.onPlay();
-
-                if (mediaPlayer == null){
-                    initialMediaPlayer();
-                }else {
-
-                    mediaPlayer.start();
-                    playButton.setVisibility(View.INVISIBLE);
-                    pauseButton.setVisibility(View.VISIBLE);
-
-                    runSeekbar();
-                }
-            }
-
-            @Override
-            public void onPause() {
-                super.onPause();
-                mediaPlayer.pause();
-                playButton.setVisibility(View.VISIBLE);
-                pauseButton.setVisibility(View.INVISIBLE);
-
-                stopSeekbar();
-            }
-
-            @Override
-            public void onSeekTo(long position) {
-                super.onSeekTo(position);
-                mediaPlayer.seekTo((int) position);
-            }
-
-            @Override
-            public void onStop() {
-                super.onStop();
-                mediaPlayer.stop();
-                mediaPlayer.release();
-                mediaPlayer = null;
-                stopSeekbar();
-                playButton.setVisibility(View.VISIBLE);
-                pauseButton.setVisibility(View.INVISIBLE);
-                seekBar.setProgress(0);
-            }
-
-        });
-
-        initialMediaPlayer();
+        mMediaBrowser.connect();
 
         playButton = findViewById(R.id.imageViewPlay);
         pauseButton = findViewById(R.id.imageViewPause);
@@ -200,14 +122,14 @@ public class MainActivity extends AppCompatActivity {
         playButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                mediaController.getTransportControls().play();
+                mMediaController.getTransportControls().play();
             }
         });
 
         pauseButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                mediaController.getTransportControls().pause();
+                mMediaController.getTransportControls().pause();
             }
         });
 
@@ -216,26 +138,25 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private void initialMediaPlayer() {
-        try {
-
-            mediaPlayer = new MediaPlayer();
-            mediaPlayer.setDataSource("http://sv.blogmusic.ir/myahang/Classic-music-1.mp3");
-            mediaPlayer.setOnPreparedListener(myOnPreparedListener);
-            mediaPlayer.setOnCompletionListener(completionListener);
-            mediaPlayer.prepareAsync();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    @Override
+    protected void onStart() {
+        super.onStart();
     }
 
     private SeekBar.OnSeekBarChangeListener seekBarChangeListener =
             new SeekBar.OnSeekBarChangeListener() {
                 @Override
-                public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                    if(mediaPlayer != null && fromUser){
-                        mediaPlayer.seekTo(progress * 1000);
+                public void onProgressChanged(SeekBar seekBar,
+                                              int progress, boolean fromUser) {
+
+                    switch (playbackStateCompat.getState()) {
+                        case PlaybackStateCompat.STATE_PLAYING:
+                        case PlaybackStateCompat.STATE_PAUSED:
+                            if (fromUser) {
+                                mMediaController.getTransportControls()
+                                        .seekTo(progress * 1000);
+                            }
+                            break;
                     }
                 }
 
@@ -250,85 +171,42 @@ public class MainActivity extends AppCompatActivity {
                 }
             };
 
-    PlaybackStateCompat.Builder playbackStateBuilder =
-            new PlaybackStateCompat.Builder();
-
-    public void updatePlaybackState() {
-
-        playbackStateBuilder
-                .setActions(
-                        PlaybackStateCompat.ACTION_PLAY_PAUSE |
-                                PlaybackStateCompat.ACTION_PLAY |
-                                PlaybackStateCompat.ACTION_PAUSE |
-                                PlaybackStateCompat.ACTION_STOP |
-                                PlaybackStateCompat.ACTION_SEEK_TO)
-                .setState(
-                        PlaybackStateCompat.STATE_PLAYING,
-                        0, // Track position in ms
-                        1.0f); // Playback speed
-
-        mMediaSession.setPlaybackState(playbackStateBuilder.build());
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        unregisterNoisyReceiver();
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        registerNoisyReceiver();
-    }
-
-    Bitmap artworkthumbnail = null;
-    String fullSizeArtWorkUri =
-            Uri.parse("http://sv.blogmusic.ir/myahang/Classic-music-1.mp3")
-                    .toString();
-    long duration;
-    String album, artist, title;
-
-    public void updateMetadata() {
-        MediaMetadataCompat.Builder builder =
-                new MediaMetadataCompat.Builder();
-
-        builder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART,
-                artworkthumbnail);
-        builder.putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI,
-                fullSizeArtWorkUri);
-
-        builder.putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration);
-
-        builder.putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album);
-        builder.putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist);
-        builder.putString(MediaMetadataCompat.METADATA_KEY_TITLE, title);
-
-
-        mMediaSession.setMetadata(builder.build());
-    }
-
     private Handler seekbarHandler;
     private Runnable seekbarRunnable;
 
     private void runSeekbar() {
-        seekBar.setEnabled(true);
-        seekbarHandler = new Handler();
-        seekbarRunnable = new Runnable() {
-            @Override
-            public void run() {
-                if (mediaPlayer != null) {
-                    int mCurrentPosition = mediaPlayer.getCurrentPosition() / 1000;
-                    seekBar.setProgress(mCurrentPosition);
+        if (seekbarHandler == null) {
+            seekBar.setEnabled(true);
+            seekbarHandler = new Handler();
+            seekbarRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    if (playbackStateCompat.getState() == PlaybackStateCompat.STATE_PLAYING) {
+                        int mCurrentPosition = (int) playbackStateCompat.getPosition() / 1000;
+
+                        seekBar.setProgress(mCurrentPosition);
+                    }
+                    seekbarHandler.postDelayed(this, 1000);
                 }
-                seekbarHandler.postDelayed(this, 1000);
-            }
-        };
-        runOnUiThread(seekbarRunnable);
+            };
+            runOnUiThread(seekbarRunnable);
+        }
     }
 
     private void stopSeekbar() {
         seekBar.setEnabled(false);
         seekbarHandler.removeCallbacks(seekbarRunnable);
+        seekbarHandler = null;
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (playbackStateCompat != null){
+            if (playbackStateCompat.getState() == PlaybackStateCompat.STATE_PAUSED){
+                mMediaController.getTransportControls().stop();
+            }
+        }
+        mMediaBrowser.disconnect();
     }
 }
