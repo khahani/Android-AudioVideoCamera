@@ -84,7 +84,7 @@
             app:layout_constraintTop_toTopOf="parent">
 
             <TextView
-                android:id="@+id/textViewTrack"
+                android:id="@+id/textViewTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Watch Me"
@@ -92,7 +92,7 @@
                 android:textColor="#fff" />
 
             <TextView
-                android:id="@+id/textViewAlbum"
+                android:id="@+id/textViewSubtitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Silento - Album: Watch Me"

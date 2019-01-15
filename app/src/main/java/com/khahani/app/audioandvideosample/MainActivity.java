@@ -15,6 +15,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.SeekBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
@@ -80,6 +81,15 @@ public class MainActivity extends AppCompatActivity {
                                                 Log.e(TAG, "onMetadataChanged: " + e.getMessage());
                                             }
                                         }
+
+                                        ImageView albumImage = findViewById(R.id.imageViewAlbumArt);
+                                        TextView title = findViewById(R.id.textViewTitle);
+                                        TextView subtitle = findViewById(R.id.textViewSubtitle);
+
+                                        albumImage.setImageBitmap(metadata.getBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART));
+                                        title.setText(metadata.getString(MediaMetadataCompat.METADATA_KEY_ALBUM));
+                                        subtitle.setText(metadata.getString(MediaMetadataCompat.METADATA_KEY_ARTIST));
+
                                     }
                                 });
 
@@ -202,10 +212,12 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (playbackStateCompat != null){
-            if (playbackStateCompat.getState() == PlaybackStateCompat.STATE_PAUSED){
+        if (playbackStateCompat != null) {
+            if (playbackStateCompat.getState() == PlaybackStateCompat.STATE_PAUSED) {
                 mMediaController.getTransportControls().stop();
             }
+        } else {
+            stopSeekbar();
         }
         mMediaBrowser.disconnect();
     }

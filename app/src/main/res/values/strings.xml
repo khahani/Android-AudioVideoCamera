@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">AudioAndVideoSample</string>
+    <string name="pause">Pause</string>
+    <string name="skip_to_next">Next</string>
+    <string name="play">Play</string>
+    <string name="audio_link">http://sv.blogmusic.ir/myahang/Classic-music-1.mp3</string>
+    <!--<string name="audio_link">http://dl2.my98music.ir//Data/Single/12.93/14/Armin%202AFM%20-%20Tebghe%20Mamool/Armin%202AFM%20-%20Tebghe%20Mamool%20%5B128%5D.mp3</string>-->
+    <!--<string name="audio_link">http://dl2.my98music.ir//Data/Single/5.94/2/Armin%202AFM%20-%20Aroom%20Yavash/Armin%202AFM%20-%20Aroom%20Yavash%20%5b128%5d.mp3</string>-->
 </resources>

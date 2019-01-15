@@ -1,5 +1,14 @@
 package com.khahani.app.audioandvideosample;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.content.ContentResolver;
+import android.graphics.BitmapFactory;
+import android.media.MediaMetadataRetriever;
+import android.os.Build;
+import android.support.annotation.RequiresApi;
+import android.support.v4.media.app.NotificationCompat.MediaStyle;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -7,21 +16,23 @@ import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.support.v4.content.ContextCompat;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
+import android.support.v4.app.NotificationCompat;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaBrowserServiceCompat;
+import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
+import android.support.v4.media.session.MediaButtonReceiver;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
-import android.view.View;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class MediaPlaybackService extends MediaBrowserServiceCompat {
@@ -29,6 +40,8 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
     private static final String LOG_TAG =
             MediaPlaybackService.class.getSimpleName();
     public static final String ACTION_UPDATE_META_DATA = "action_update_meta_data";
+    private static final int NOTIFICATION_ID = 1;
+    private static final String CHANNEL_ID = "media_playback_channel";
 
     private MediaPlayer mediaPlayer;
     private MediaSessionCompat mMediaSession;
@@ -52,9 +65,9 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
             public void onPlay() {
                 super.onPlay();
 
-                if (mediaPlayer == null) {
+                if (mediaPlayer == null){
                     initialMediaPlayer();
-                } else {
+                }else{
                     play();
                 }
             }
@@ -64,13 +77,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                 super.onPause();
                 mediaPlayer.pause();
                 updatePlaybackState();
-            }
-
-            @Override
-            public void onSeekTo(long position) {
-                super.onSeekTo(position);
-                mediaPlayer.seekTo((int) position);
-                updatePlaybackState();
+                stopForeground(false);
             }
 
             @Override
@@ -80,17 +87,16 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                 mediaPlayer.release();
                 mediaPlayer = null;
                 updatePlaybackState();
+
+                stopForeground(true);
                 stopSelf();
             }
 
             @Override
-            public void onCustomAction(String action, Bundle extras) {
-                super.onCustomAction(action, extras);
-                if (mediaPlayer != null) {
-                    if (action.equals(ACTION_UPDATE_META_DATA)) {
-                        updateMetadata();
-                    }
-                }
+            public void onSeekTo(long position) {
+                super.onSeekTo(position);
+                mediaPlayer.seekTo((int) position);
+                updatePlaybackState();
             }
         });
 
@@ -113,9 +119,70 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
             mediaPlayer.start();
             updatePlaybackState();
 
-            startService(new Intent(MediaPlaybackService.this,
-                    MediaPlaybackService.class));
+            startForeground(NOTIFICATION_ID, buildMediaNotification());
         }
+    }
+
+    private Notification buildMediaNotification() {
+
+        // You only need to create the channel on API 26+ devices
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            createChannel();
+        }
+
+        MediaControllerCompat controller = mMediaSession.getController();
+        MediaMetadataCompat mediaMetadata = controller.getMetadata();
+        MediaDescriptionCompat description = mediaMetadata.getDescription();
+
+        NotificationCompat.Builder builder =
+                new NotificationCompat.Builder(this, CHANNEL_ID);
+
+        builder
+                .setContentTitle(description.getTitle())
+                .setContentText(description.getSubtitle())
+                .setSubText(description.getDescription())
+                .setLargeIcon(description.getIconBitmap())
+                .setContentIntent(controller.getSessionActivity())
+                .setDeleteIntent(MediaButtonReceiver
+                        .buildMediaButtonPendingIntent(this,
+                                PlaybackStateCompat.ACTION_STOP))
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC);
+
+        builder
+                .setSmallIcon(R.drawable.notification_icon)
+                .setColor(ContextCompat.getColor(this, R.color.colorPrimaryDark));
+
+        builder
+                .addAction(new NotificationCompat.Action(
+                        R.drawable.ic_shape_pause,
+                        getString(R.string.pause),
+                        MediaButtonReceiver.buildMediaButtonPendingIntent(
+                                this, PlaybackStateCompat.ACTION_PLAY_PAUSE)))
+                .addAction(new NotificationCompat.Action(
+                        R.drawable.ic_shape_next,
+                        getString(R.string.skip_to_next),
+                        MediaButtonReceiver.buildMediaButtonPendingIntent(
+                                this, PlaybackStateCompat.ACTION_SKIP_TO_NEXT)));
+
+        builder
+                .setStyle(new MediaStyle()
+                        .setShowActionsInCompactView(0)
+                        .setMediaSession(mMediaSession.getSessionToken())
+//These two lines are only required if your minSdkVersion is <API 21
+                        .setShowCancelButton(true)
+                        .setCancelButtonIntent(
+                                MediaButtonReceiver.buildMediaButtonPendingIntent(
+                                        this, PlaybackStateCompat.ACTION_STOP)));
+
+        builder.setOnlyAlertOnce(true);
+
+        return builder.build();
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        MediaButtonReceiver.handleIntent(mMediaSession, intent);
+        return super.onStartCommand(intent, flags, startId);
     }
 
     private MediaPlayer.OnPreparedListener myOnPreparedListener =
@@ -207,7 +274,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         try {
 
             MediaPlayer mediaPlayer = new MediaPlayer();
-            mediaPlayer.setDataSource("http://sv.blogmusic.ir/myahang/Classic-music-1.mp3");
+            mediaPlayer.setDataSource(getString(R.string.audio_link));
             mediaPlayer.setOnPreparedListener(myOnPreparedListener);
             mediaPlayer.setOnCompletionListener(completionListener);
             mediaPlayer.prepareAsync();
@@ -266,28 +333,42 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
     }
 
 
-    Bitmap artworkthumbnail = null;
-    String fullSizeArtWorkUri =
-            Uri.parse("http://sv.blogmusic.ir/myahang/Classic-music-1.mp3")
-                    .toString();
-    long duration;
-    String album, artist, title;
-
     public void updateMetadata() {
+
         MediaMetadataCompat.Builder builder =
                 new MediaMetadataCompat.Builder();
 
-        builder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART,
-                artworkthumbnail);
-        builder.putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI,
-                fullSizeArtWorkUri);
+        MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+
+        if (Build.VERSION.SDK_INT >= 14)
+            mmr.setDataSource(getString(R.string.audio_link), new HashMap<String, String>());
+        else
+            mmr.setDataSource(getString(R.string.audio_link));
+
+        String album =
+                mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM);
+        String artist = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST);
+        String description = String.format("%s %s",
+                mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_AUTHOR),
+                mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DATE));
+        byte[] image = mmr.getEmbeddedPicture();
+
+        if (image != null) {
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inMutable = true;
+            Bitmap bitmap = BitmapFactory.decodeByteArray(image, 0, image.length, options);
+            builder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART,
+                    bitmap);
+        }
 
         builder.putLong(MediaMetadataCompat.METADATA_KEY_DURATION,
                 mediaPlayer.getDuration() / 1000);
 
         builder.putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album);
         builder.putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist);
-        builder.putString(MediaMetadataCompat.METADATA_KEY_TITLE, title);
+        builder.putString(MediaMetadataCompat.METADATA_KEY_TITLE, album);
+        builder.putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, artist);
+        builder.putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, description);
 
 
         mMediaSession.setMetadata(builder.build());
@@ -317,6 +398,27 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
     private void stopPlaybackState() {
         playbackStateHandler.removeCallbacks(playbackStateRunnable);
         playbackStateRunnable = null;
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private void createChannel() {
+        NotificationManager
+                mNotificationManager =
+                (NotificationManager) this
+                        .getSystemService(Context.NOTIFICATION_SERVICE);
+        // The id of the channel.
+        String id = CHANNEL_ID;
+        // The user-visible name of the channel.
+        CharSequence name = "Media playback";
+        // The user-visible description of the channel.
+        String description = "Media playback controls";
+        int importance = NotificationManager.IMPORTANCE_LOW;
+        NotificationChannel mChannel = new NotificationChannel(id, name, importance);
+        // Configure the notification channel.
+        mChannel.setDescription(description);
+        mChannel.setShowBadge(false);
+        mChannel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+        mNotificationManager.createNotificationChannel(mChannel);
     }
 
 
